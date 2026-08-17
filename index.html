@@ -912,7 +912,7 @@ const CONFIG = {
 
   // Además del Sheet, ¿abrir WhatsApp con los datos?  true | false
   abrirWhatsApp: true,
-  whatsapp: '5210000000000',      // lada país, sin + ni espacios
+  whatsapp: '523310438944',       // lada país, sin + ni espacios
 
   webhookURL: '',                 // opcional: GHL / Zapier / Make
 
@@ -1089,6 +1089,35 @@ const COBERTURA = {
     return 'RP-' + n;
   }
 
+  /* Envía los datos con un formulario oculto apuntando a un iframe.
+     No depende de CORS ni de que el navegador permita leer la respuesta. */
+  function mandarASheet(datos){
+    let marco = document.getElementById('sheet-sink');
+    if(!marco){
+      marco = document.createElement('iframe');
+      marco.id = 'sheet-sink';
+      marco.name = 'sheet-sink';
+      marco.style.display = 'none';
+      document.body.appendChild(marco);
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = CONFIG.sheetURL;
+    form.target = 'sheet-sink';
+    form.style.display = 'none';
+
+    const campo = document.createElement('input');
+    campo.type = 'hidden';
+    campo.name = 'datos';
+    campo.value = JSON.stringify(datos);
+    form.appendChild(campo);
+
+    document.body.appendChild(form);
+    form.submit();
+    setTimeout(()=>form.remove(), 4000);
+  }
+
   document.getElementById('form-enviar').addEventListener('click', async ()=>{
     let ok = true, primerError = null;
     const datos = {};
@@ -1115,15 +1144,13 @@ const COBERTURA = {
     btn.textContent = 'Registrando...';
     btn.disabled = true;
 
-    /* → Google Sheets (Apps Script) */
+    /* → Google Sheets (Apps Script)
+       Se manda con un <form> hacia un iframe oculto. Es el método más
+       confiable con Apps Script: el navegador no aplica CORS a un envío
+       de formulario, a diferencia de fetch(). */
     if(CONFIG.sheetURL){
       try{
-        await fetch(CONFIG.sheetURL, {
-          method:'POST',
-          mode:'no-cors',
-          headers:{'Content-Type':'text/plain;charset=utf-8'},
-          body: JSON.stringify(datos)
-        });
+        mandarASheet(datos);
       }catch(err){ console.error('Sheet falló:', err); }
     }
 
